@@ -2,10 +2,7 @@ settings:
   num_clients: 2
   num_replicas: 3
   log_level: DEBUG
-  # consistency_level: sequential
-  consistency_level: eventual
-  # consistency_level: linear
-  # consistency_level: casual
+  consistency_levels: [sequential, eventual, linear, casual]
   client:
     ip: localhost
     port: 9000
