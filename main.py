@@ -20,6 +20,7 @@ class Main:
         self.logger = logging.getLogger(__name__)
         self.num_clients = config_settings["num_clients"]
         self.num_replicas = config_settings["num_replicas"]
+        self.consistency_level = config_settings["consistency_level"]
 
         self.client_ips = []
         self.client_ports = []
@@ -27,7 +28,8 @@ class Main:
         self.replica_ports = []
 
     def run(self):
-        self.logger.info("Starting distributed kv store...")
+        self.logger.info(
+            f"Starting distributed kv store with {self.consistency_level} consistency...")
         self.start_clients()
 
     # Start client processes and store their ip and port
