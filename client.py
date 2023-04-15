@@ -1,6 +1,7 @@
 import logging
 import socket
 import threading
+import time
 import yaml
 
 config = yaml.safe_load(open("./config.yml"))
@@ -8,47 +9,59 @@ config_settings = config["settings"]
 
 
 class Client:
-    def __init__(self, host, port):
+    def __init__(self, id, host, port):
+        self.id = id
         self.host = host
         self.port = port
+        self.command_file = config_settings["client"]["command_file"]
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.bind((self.host, self.port))
+        logging.debug(
+            f"{self.id} initialized at {self.host}:{self.port}")
 
-        logging.debug(f"Client initialized at {self.host}:{self.port}")
+        self.execute_commands()
 
-    # Send data to client
-    def send(self, data):
-        self.socket.send(data.encode())
+    # Send command to replica
+    def send(self, address, data):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(address)
 
-    # Receive data from client
-    def receive(self):
-        return self.socket.recv(1024)
+        sock.send(data.encode())
+        response = sock.recv(1024).decode()
 
-    # Receive data from client and sync with replicas
-    def handle_new_connection(self, conn, addr):
-        logging.debug(f"Client {self.host}:{self.port} connected to {addr}")
+        sock.close()
+        return response
 
-        # Receive data from client
-        data = self.receive()
-        logging.debug(f"Received data: {data}")
+    # Get replica address from replica id
 
-        # Send response back to client
-        response = "Data received"
-        self.send(response)
+    def get_replica_address(self, replica_id):
+        replica_settings = config_settings["replica"]
+        replica_ip = replica_settings["ip"]
+        replica_port = replica_settings["port"] + int(replica_id.split("_")[1])
 
-    # Listen for new connections
-    def listen(self):
-        with self.socket as sock:
-            self.listen()
+        return (replica_ip, replica_port)
 
-            logging.debug(
-                f"Client {self.host}:{self.port} listening for connections...")
+    # Return client commands from file
+    def read_commands_from_file(self, file_name):
+        with open(file_name, "r") as f:
+            commands = [line.strip().split() for line in f.readlines()]
+            return commands
 
-            while True:
-                conn, addr = sock.accept()
+    # Send client commands to replicas
+    def execute_commands(self):
+        commands = self.read_commands_from_file(self.command_file)
 
-                # Create a new thread for each connection
-                thread = threading.Thread(
-                    target=self.handle_new_connection, args=(conn, addr))
-                thread.start()
+        for command in commands:
+            client_id, replica_id, cmd = command[0], command[1], command[2:]
+
+            if self.id == client_id:
+                data = " ".join(cmd)
+                logging.info(
+                    f"{self.id} sending command \"{data}\" to {replica_id}")
+
+                response = self.send(
+                    self.get_replica_address(replica_id), data)
+
+                logging.info(
+                    f"{self.id} received response \"{response}\" from {replica_id}")
+
+                time.sleep(3)

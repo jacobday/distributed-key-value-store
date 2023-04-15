@@ -1,0 +1,6 @@
+client_0 replica_0 set a 1
+client_0 replica_0 get a
+client_1 replica_1 get a
+client_1 replica_2 set a 2
+client_0 replica_0 get a
+client_1 replica_0 output results.txt

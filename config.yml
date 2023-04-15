@@ -2,7 +2,13 @@ settings:
   num_clients: 2
   num_replicas: 3
   log_level: DEBUG
-  consistency_levels: [sequential, eventual, linear, casual]
+  consistency_schemes: [sequential, eventual, linear, casual]
   client:
     ip: localhost
     port: 9000
+    command_file: client-commands.txt
+  replica:
+    ip: localhost
+    port: 9500
+    # output_file: result.txt
+    
