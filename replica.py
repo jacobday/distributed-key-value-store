@@ -1,12 +1,11 @@
 import logging
 import socket
 import threading
-import yaml
 
-config = yaml.safe_load(open("./config.yml"))
-config_settings = config["settings"]
+from utils import load_config, send
+from kvstore import KVStore
 
-kv_store = {}
+config, config_settings = load_config()
 
 
 class Replica:
@@ -15,6 +14,7 @@ class Replica:
         self.host = host
         self.port = port
         self.consistency_scheme = consistency_scheme
+        self.kv_store = KVStore()
 
         # Create socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -23,44 +23,16 @@ class Replica:
         logging.debug(
             f"{self.id} initialized at {self.host}:{self.port}")
 
-    def get(self, key):
-        if key in kv_store:
-            return kv_store[key]
-        else:
-            return "Key does not exist"
-
-    def set(self, key, value):
-        kv_store[key] = value
-        return "Key-value pair added"
-
-    def delete(self, key):
-        if key in kv_store:
-            del kv_store[key]
-            return "Key deleted"
-        else:
-            return "Key does not exist"
-
-    # Send command to address
-    def send(self, address, data):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(address)
-
-        sock.send(data.encode())
-        response = sock.recv(1024).decode()
-
-        sock.close()
-        return response
-
     def handle_command(self, command):
         cmd = command.split()
         print(cmd)
 
         if cmd[0] == "get":
-            return self.get(cmd[1])
+            return self.kv_store.get(cmd[1])
         elif cmd[0] == "set":
-            return self.set(cmd[1], cmd[2])
+            return self.kv_store.set(cmd[1], cmd[2])
         elif cmd[0] == "delete":
-            return self.delete(cmd[1])
+            return self.kv_store.delete(cmd[1])
         else:
             return "Invalid command"
 
@@ -94,7 +66,7 @@ class Replica:
 
         # Listen for client commands
         self.listen()
-        self.send((main_ip, main_port), "ready")
+        send((main_ip, main_port), "ready")
 
     def start(self):
         self.run()

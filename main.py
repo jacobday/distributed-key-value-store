@@ -1,15 +1,13 @@
 import logging
 import multiprocessing
 import socket
-import threading
-import time
-import yaml
 
 from client import Client
 from replica import Replica
 
-config = yaml.safe_load(open("./config.yml"))
-config_settings = config["settings"]
+from utils import load_config, send
+
+config, config_settings = load_config()
 
 logging.basicConfig(filename="main.log",
                     filemode='a',
@@ -41,17 +39,6 @@ class Main:
         self.start_replicas()
         self.start_clients()
 
-    # Send command to address
-    def send(self, address, data):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(address)
-
-        sock.send(data.encode())
-        response = sock.recv(1024).decode()
-
-        sock.close()
-        return response
-
     # Start client processes and store their ip and port
     def start_clients(self):
         self.logger.info("Starting clients...")
@@ -76,7 +63,7 @@ class Main:
 
         # Tell clients to start sending commands
         for client_conn in self.client_connections:
-            self.send(client_conn, "run")
+            send(client_conn, "run")
 
     # Wait for the client to respond with "ready"
     def wait_for_ready(self):

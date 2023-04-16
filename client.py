@@ -1,10 +1,10 @@
 import logging
 import socket
 import time
-import yaml
 
-config = yaml.safe_load(open("./config.yml"))
-config_settings = config["settings"]
+from utils import load_config, send, read_commands_from_file, get_replica_address
+
+config, config_settings = load_config()
 
 
 class Client:
@@ -17,34 +17,9 @@ class Client:
         logging.debug(
             f"{self.id} initialized at {self.host}:{self.port}")
 
-    # Send command to address
-    def send(self, address, data):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(address)
-
-        sock.send(data.encode())
-        response = sock.recv(1024).decode()
-
-        sock.close()
-        return response
-
-    # Get replica address from replica id
-    def get_replica_address(self, replica_id):
-        replica_settings = config_settings["replica"]
-        replica_ip = replica_settings["ip"]
-        replica_port = replica_settings["port"] + int(replica_id.split("_")[1])
-
-        return (replica_ip, replica_port)
-
-    # Return client commands from file
-    def read_commands_from_file(self, file_name):
-        with open(file_name, "r") as f:
-            commands = [line.strip().split() for line in f.readlines()]
-            return commands
-
     # Send client commands to replicas
     def execute_commands(self):
-        commands = self.read_commands_from_file(self.command_file)
+        commands = read_commands_from_file(self.command_file)
 
         for command in commands:
             try:
@@ -58,8 +33,8 @@ class Client:
                 logging.info(
                     f"{self.id} sending command \"{data}\" to {replica_id}")
 
-                response = self.send(
-                    self.get_replica_address(replica_id), data)
+                response = send(
+                    get_replica_address(replica_id, config_settings["replica"]), data)
 
                 logging.info(
                     f"{self.id} received response \"{response}\" from {replica_id}")
@@ -72,7 +47,7 @@ class Client:
         main_ip = main_settings["ip"]
         main_port = main_settings["port"]
 
-        self.send((main_ip, main_port), "ready")
+        send((main_ip, main_port), "ready")
 
         # Wait for run command from main node
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
