@@ -128,33 +128,6 @@ class Main:
 
             self.run()
 
-    def handle_client(self, conn, addr):
-        with conn:
-            logging.debug(f"{self.id} connected to {addr}")
-            data = conn.recv(1024).decode()
-
-            if data:
-                logging.debug(f"{self.id} received \"{data}\" from {addr}")
-
-                cmd = data.split()
-
-                if cmd[0] == "ready":
-                    print('ready')
-
-    def listen(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind((self.host, self.port))
-
-        sock.listen()
-
-        while True:
-            conn, addr = sock.accept()
-
-            # Create new thread for each client
-            thread = threading.Thread(
-                target=self.handle_client, args=(conn, addr))
-            thread.start()
-
 
 if __name__ == "__main__":
     main = Main()

@@ -1,9 +1,12 @@
 autopep8==2.0.0
+build==0.10.0
 certifi==2022.12.7
 charset-normalizer==2.0.4
 idna==3.2
 lxml==4.9.1
+packaging==23.1
 pycodestyle==2.9.1
+pyproject_hooks==1.0.0
 PyYAML==6.0
 requests==2.26.0
 tomli==2.0.1

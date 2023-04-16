@@ -66,7 +66,6 @@ class Replica:
 
     def handle_client(self, conn, addr):
         with conn:
-            logging.debug(f"{self.id} connected to {addr}")
             data = conn.recv(1024).decode()
 
             if data:
