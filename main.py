@@ -1,5 +1,7 @@
 import logging
 import multiprocessing
+import socket
+import threading
 import time
 import yaml
 
@@ -19,23 +21,36 @@ logging.basicConfig(filename="main.log",
 
 class Main:
     def __init__(self):
+        self.id = "main"
         self.logger = logging.getLogger(__name__)
+
         self.num_clients = config_settings["num_clients"]
         self.num_replicas = config_settings["num_replicas"]
+
         self.consistency_scheme = "sequential"
         self.consistency_schemes = config_settings["consistency_schemes"]
 
-        self.client_ips = []
-        self.client_ports = []
-        self.replica_ips = []
-        self.replica_ports = []
+        self.host = config_settings["main"]["ip"]
+        self.port = config_settings["main"]["port"]
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.bind((self.host, self.port))
+
+        self.client_connections = []
 
     def run(self):
         self.start_replicas()
-
-        time.sleep(3)
-
         self.start_clients()
+
+    # Send command to address
+    def send(self, address, data):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(address)
+
+        sock.send(data.encode())
+        response = sock.recv(1024).decode()
+
+        sock.close()
+        return response
 
     # Start client processes and store their ip and port
     def start_clients(self):
@@ -49,16 +64,29 @@ class Main:
             client_port = client_settings["port"] + i
 
             # Start client process
-            client_process = multiprocessing.Process(target=Client, args=(client_id,
-                                                                          client_ip, client_port))
+            client = Client(client_id, client_ip, client_port)
+            client_process = multiprocessing.Process(target=client.start)
             client_process.start()
 
             # Store client ip and port
-            self.client_ips.append(client_ip)
-            self.client_ports.append(client_port)
+            self.client_connections.append((client_ip, client_port))
 
-            self.logger.info(
-                f"Started client_{i} at {client_ip}:{client_port}")
+            # Wait for client to start before continuing
+            self.wait_for_ready()
+
+        # Tell clients to start sending commands
+        for client_conn in self.client_connections:
+            self.send(client_conn, "run")
+
+    # Wait for the client to respond with "ready"
+    def wait_for_ready(self):
+        self.sock.listen()
+
+        cmd = ""
+
+        while cmd != "ready":
+            conn, addr = self.sock.accept()
+            cmd = conn.recv(1024).decode()
 
     # Start replica processes and store their ip and port
     def start_replicas(self):
@@ -72,16 +100,10 @@ class Main:
             replica_port = replica_settings["port"] + i
 
             # Start replica process
-            replica_process = multiprocessing.Process(target=Replica, args=(replica_id,
-                                                                            replica_ip, replica_port, self.consistency_scheme))
+            replica = Replica(replica_id, replica_ip,
+                              replica_port, self.consistency_scheme)
+            replica_process = multiprocessing.Process(target=replica.start)
             replica_process.start()
-
-            # Store replica ip and port
-            self.replica_ips.append(replica_ip)
-            self.replica_ports.append(replica_port)
-
-            self.logger.info(
-                f"Started replica_{i} at {replica_ip}:{replica_port}")
 
     # Ask the user to choose a consistency scheme
     def set_run_options(self):
@@ -105,6 +127,33 @@ class Main:
                 f"\n{start_message}\n  View logs in main.log\n")
 
             self.run()
+
+    def handle_client(self, conn, addr):
+        with conn:
+            logging.debug(f"{self.id} connected to {addr}")
+            data = conn.recv(1024).decode()
+
+            if data:
+                logging.debug(f"{self.id} received \"{data}\" from {addr}")
+
+                cmd = data.split()
+
+                if cmd[0] == "ready":
+                    print('ready')
+
+    def listen(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((self.host, self.port))
+
+        sock.listen()
+
+        while True:
+            conn, addr = sock.accept()
+
+            # Create new thread for each client
+            thread = threading.Thread(
+                target=self.handle_client, args=(conn, addr))
+            thread.start()
 
 
 if __name__ == "__main__":

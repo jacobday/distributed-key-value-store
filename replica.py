@@ -1,6 +1,10 @@
 import logging
 import socket
 import threading
+import yaml
+
+config = yaml.safe_load(open("./config.yml"))
+config_settings = config["settings"]
 
 kv_store = {}
 
@@ -19,8 +23,6 @@ class Replica:
         logging.debug(
             f"{self.id} initialized at {self.host}:{self.port}")
 
-        self.listen()
-
     def get(self, key):
         if key in kv_store:
             return kv_store[key]
@@ -37,6 +39,17 @@ class Replica:
             return "Key deleted"
         else:
             return "Key does not exist"
+
+    # Send command to address
+    def send(self, address, data):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(address)
+
+        sock.send(data.encode())
+        response = sock.recv(1024).decode()
+
+        sock.close()
+        return response
 
     def handle_command(self, command):
         cmd = command.split()
@@ -73,3 +86,16 @@ class Replica:
                 thread = threading.Thread(
                     target=self.handle_client, args=(conn, addr))
                 thread.start()
+
+    def run(self):
+        # Notify the main node that the replica is running
+        main_settings = config_settings["main"]
+        main_ip = main_settings["ip"]
+        main_port = main_settings["port"]
+
+        # Listen for client commands
+        self.listen()
+        self.send((main_ip, main_port), "ready")
+
+    def start(self):
+        self.run()

@@ -18,9 +18,7 @@ class Client:
         logging.debug(
             f"{self.id} initialized at {self.host}:{self.port}")
 
-        self.execute_commands()
-
-    # Send command to replica
+    # Send command to address
     def send(self, address, data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect(address)
@@ -32,7 +30,6 @@ class Client:
         return response
 
     # Get replica address from replica id
-
     def get_replica_address(self, replica_id):
         replica_settings = config_settings["replica"]
         replica_ip = replica_settings["ip"]
@@ -51,7 +48,11 @@ class Client:
         commands = self.read_commands_from_file(self.command_file)
 
         for command in commands:
-            client_id, replica_id, cmd = command[0], command[1], command[2:]
+            try:
+                client_id, replica_id, cmd = command[0], command[1], command[2:]
+            except:
+                logging.error("Invalid entry in command file")
+                continue
 
             if self.id == client_id:
                 data = " ".join(cmd)
@@ -64,4 +65,29 @@ class Client:
                 logging.info(
                     f"{self.id} received response \"{response}\" from {replica_id}")
 
-                time.sleep(3)
+                time.sleep(2)
+
+    def run(self):
+        # Notify the main node that the client is running
+        main_settings = config_settings["main"]
+        main_ip = main_settings["ip"]
+        main_port = main_settings["port"]
+
+        self.send((main_ip, main_port), "ready")
+
+        # Wait for run command from main node
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((self.host, self.port))
+
+        sock.listen()
+        cmd = ""
+
+        while cmd != "run":
+            conn, addr = sock.accept()
+            cmd = conn.recv(1024).decode()
+
+        # Execute client commands
+        self.execute_commands()
+
+    def start(self):
+        self.run()
