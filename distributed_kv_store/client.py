@@ -2,7 +2,7 @@ import logging
 import socket
 import time
 
-from utils import load_config, send, read_commands_from_file, get_replica_address
+from .utils import load_config, send, read_commands_from_file, get_replica_address
 
 config, config_settings = load_config()
 

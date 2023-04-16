@@ -2,8 +2,8 @@ import logging
 import socket
 import threading
 
-from utils import load_config, send
-from kvstore import KVStore
+from .utils import load_config, send
+from .kvstore import KeyValueStore
 
 config, config_settings = load_config()
 
@@ -14,7 +14,7 @@ class Replica:
         self.host = host
         self.port = port
         self.consistency_scheme = consistency_scheme
-        self.kv_store = KVStore()
+        self.kv_store = KeyValueStore()
 
         # Create socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

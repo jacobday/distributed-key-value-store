@@ -2,10 +2,7 @@ import logging
 import multiprocessing
 import socket
 
-from client import Client
-from replica import Replica
-
-from utils import load_config, send
+from distributed_kv_store import Client, Replica, load_config, send
 
 config, config_settings = load_config()
 

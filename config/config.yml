@@ -9,7 +9,7 @@ settings:
   client:
     ip: localhost
     port: 9200
-    command_file: client-commands.txt
+    command_file: commands/client-commands.txt
   replica:
     ip: localhost
     port: 9400
