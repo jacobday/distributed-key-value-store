@@ -2,7 +2,11 @@ client_0 replica_0 set a 1
 client_0 replica_1 get b
 client_0 replica_0 get a
 
+client_0 replica_1 write replica_1_kvstore.txt
+
 client_1 replica_1 set b 1
 client_1 replica_2 set a 2
 client_1 replica_0 get a
-client_1 replica_0 output results.txt
+
+client_1 replica_0 write replica_0_kvstore.txt
+client_1 replica_2 write replica_2_kvstore.txt

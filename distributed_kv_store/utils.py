@@ -10,8 +10,6 @@ def load_config():
         return config, config_settings
 
 # Send data to an address and return the response
-
-
 def send(address, data):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(address)
@@ -23,12 +21,16 @@ def send(address, data):
     return response
 
 # Return client commands from file
-
-
 def read_commands_from_file(file_name):
     with open(file_name, "r") as f:
         commands = [line.strip().split() for line in f.readlines()]
         return commands
+
+# Write output to file
+def output_dict_to_file(dictionary, file_name):
+    with open(file_name, "w") as f:
+        for key, value in dictionary.items():
+            f.write(f"{key} {value}")
 
 
 # Get replica address from replica id

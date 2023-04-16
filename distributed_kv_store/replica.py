@@ -2,7 +2,7 @@ import logging
 import socket
 import threading
 
-from .utils import load_config, send
+from .utils import load_config, send, output_dict_to_file
 from .kvstore import KeyValueStore
 
 config, config_settings = load_config()
@@ -25,14 +25,19 @@ class Replica:
 
     def handle_command(self, command):
         cmd = command.split()
-        print(cmd)
+        cmd_action = cmd[0]
 
-        if cmd[0] == "get":
+        print(f"{self.id} received command: {command}")
+
+        if cmd_action == "get":
             return self.kv_store.get(cmd[1])
-        elif cmd[0] == "set":
+        elif cmd_action == "set":
             return self.kv_store.set(cmd[1], cmd[2])
-        elif cmd[0] == "delete":
+        elif cmd_action == "delete":
             return self.kv_store.delete(cmd[1])
+        elif cmd_action == "write":
+            output_dict_to_file(self.kv_store.store, f"results/{cmd[1]}")
+            return "Write successful"
         else:
             return "Invalid command"
 
@@ -59,13 +64,13 @@ class Replica:
                 thread.start()
 
     def run(self):
+        # Listen for client commands
+        self.listen()
+
         # Notify the main node that the replica is running
         main_settings = config_settings["main"]
         main_ip = main_settings["ip"]
         main_port = main_settings["port"]
-
-        # Listen for client commands
-        self.listen()
         send((main_ip, main_port), "ready")
 
     def start(self):

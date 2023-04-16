@@ -39,7 +39,7 @@ class Client:
                 logging.info(
                     f"{self.id} received response \"{response}\" from {replica_id}")
 
-                time.sleep(2)
+                # time.sleep(1)
 
     def run(self):
         # Notify the main node that the client is running
@@ -59,6 +59,12 @@ class Client:
         while cmd != "run":
             conn, addr = sock.accept()
             cmd = conn.recv(1024).decode()
+
+            if cmd == "run":
+                response = f"{self.id} running"
+                conn.send(response.encode())
+
+        logging.debug(f"{self.id} received run command")
 
         # Execute client commands
         self.execute_commands()
