@@ -28,9 +28,11 @@ def read_commands_from_file(file_name):
 
 # Write output to file
 def output_dict_to_file(dictionary, file_name):
+    dictionary = dict(sorted(dictionary.items()))
+    
     with open(file_name, "w") as f:
         for key, value in dictionary.items():
-            f.write(f"{key} {value}")
+            f.write(f"{key} {value}\n")
 
 
 # Get replica address from replica id

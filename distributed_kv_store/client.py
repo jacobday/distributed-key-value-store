@@ -39,7 +39,7 @@ class Client:
                 logging.info(
                     f"{self.id} received response \"{response}\" from {replica_id}")
 
-                # time.sleep(1)
+                time.sleep(1)
 
     def run(self):
         # Notify the main node that the client is running

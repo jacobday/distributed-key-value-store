@@ -3,18 +3,24 @@ import socket
 import threading
 
 from .utils import load_config, send, output_dict_to_file
-from .kvstore import KeyValueStore
+from .kvstore import KeyValueStore, EventualConsistencyKVStore
 
 config, config_settings = load_config()
 
 
 class Replica:
-    def __init__(self, id, host, port, consistency_scheme):
+    def __init__(self, id, host, port, consistency_scheme, replica_addresses):
         self.id = id
         self.host = host
         self.port = port
         self.consistency_scheme = consistency_scheme
-        self.kv_store = KeyValueStore()
+        self.replica_addresses = replica_addresses
+        self.output_location = config_settings["replica"]["output_location"]
+
+        if consistency_scheme == "eventual":
+            self.kv_store = EventualConsistencyKVStore(self, replica_addresses, config_settings["replica"]["gossip_interval"])
+        else:
+            self.kv_store = KeyValueStore()
 
         # Create socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -32,12 +38,21 @@ class Replica:
         if cmd_action == "get":
             return self.kv_store.get(cmd[1])
         elif cmd_action == "set":
-            return self.kv_store.set(cmd[1], cmd[2])
+            response = self.kv_store.set(cmd[1], cmd[2])
+            self.kv_store.save(f"{self.output_location}/{self.id}_kvstore.txt")
+
+            return response
         elif cmd_action == "delete":
             return self.kv_store.delete(cmd[1])
-        elif cmd_action == "write":
-            output_dict_to_file(self.kv_store.store, f"results/{cmd[1]}")
-            return "Write successful"
+        elif cmd_action == "save":
+            
+            # return self.kv_store.save(f"{output_location}/{cmd[1]}")
+            return self.kv_store.save(f"{self.output_location}/{self.id}_kvstore.txt")
+            
+            # output_dict_to_file(self.kv_store.store, f"{output_location}/{cmd[1]}")
+            # return "Write successful"
+        elif cmd_action == "update":
+            return self.kv_store.update(cmd[1:])
         else:
             return "Invalid command"
 
@@ -48,6 +63,7 @@ class Replica:
             if data:
                 logging.debug(f"{self.id} received \"{data}\" from {addr}")
                 response = self.handle_command(data)
+                print(response)
                 conn.sendall(response.encode())
 
     def listen(self):
@@ -71,6 +87,7 @@ class Replica:
         main_settings = config_settings["main"]
         main_ip = main_settings["ip"]
         main_port = main_settings["port"]
+
         send((main_ip, main_port), "ready")
 
     def start(self):

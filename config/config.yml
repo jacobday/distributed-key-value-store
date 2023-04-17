@@ -13,5 +13,6 @@ settings:
   replica:
     ip: localhost
     port: 9400
-    # output_file: result.txt
+    output_location: results
+    gossip_interval: 2
     

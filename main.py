@@ -6,7 +6,7 @@ from distributed_kv_store import Client, Replica, load_config, send
 
 config, config_settings = load_config()
 
-logging.basicConfig(filename="main.log",
+logging.basicConfig(filename="./logs/main.log",
                     filemode='a',
                     format='%(asctime)s,%(msecs)d %(filename)s %(levelname)s: %(message)s',
                     datefmt='%H:%M:%S',
@@ -30,7 +30,8 @@ class Main:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((self.host, self.port))
 
-        self.client_connections = []
+        self.client_addresses = []
+        self.replica_addresses = [('localhost', 9400), ('localhost', 9401), ('localhost', 9402)]
 
     def run(self):
         self.start_replicas()
@@ -53,13 +54,13 @@ class Main:
             client_process.start()
 
             # Store client ip and port
-            self.client_connections.append((client_ip, client_port))
+            self.client_addresses.append((client_ip, client_port))
 
             # Wait for client to start before continuing
             self.wait_for_ready()
 
         # Tell clients to start sending commands
-        for client_conn in self.client_connections:
+        for client_conn in self.client_addresses:
             send(client_conn, "run")
 
     # Wait for the client to respond with "ready"
@@ -85,9 +86,15 @@ class Main:
 
             # Start replica process
             replica = Replica(replica_id, replica_ip,
-                              replica_port, self.consistency_scheme)
+                              replica_port, self.consistency_scheme, self.replica_addresses)
             replica_process = multiprocessing.Process(target=replica.start)
             replica_process.start()
+
+            # Store client ip and port
+            # self.replica_addresses.append((replica_ip, replica_port))
+
+            # Update pending updates for each replica when a new replica is added
+            # replica.kv_store.update_pending_updates()
 
     # Ask the user to choose a consistency scheme
     def set_run_options(self):
