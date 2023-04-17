@@ -3,7 +3,7 @@ import socket
 import threading
 
 from .utils import load_config, send
-from .kvstore import KeyValueStore, EventualConsistencyKVStore
+from .kvstore import KeyValueStore, EventualConsistencyKVStore, LinearConsistencyKVStore
 
 config, config_settings = load_config()
 
@@ -20,7 +20,9 @@ class Replica:
 
         # Initialize the chosen consistency scheme
         if consistency_scheme == "eventual":
-            self.kv_store = EventualConsistencyKVStore(self, replica_addresses, config_settings["replica"]["gossip_interval"])
+            self.kv_store = EventualConsistencyKVStore(self, replica_addresses)
+        elif consistency_scheme == "linear":
+            self.kv_store = LinearConsistencyKVStore(self, replica_addresses)
         else:
             self.kv_store = KeyValueStore()
 
@@ -42,7 +44,7 @@ class Replica:
             return self.kv_store.get(cmd[1])
         elif cmd_action == "set":
             response = self.kv_store.set(cmd[1], cmd[2])
-            self.kv_store.save(f"{self.output_location}/{self.id}_kvstore.txt")
+            self.kv_store.save(f"{self.output_location}/{self.id}_{self.output_suffix}")
 
             return response
         elif cmd_action == "delete":
