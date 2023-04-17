@@ -14,5 +14,6 @@ settings:
     ip: localhost
     port: 9400
     output_location: results
+    output_suffix: kvstore.txt
     gossip_interval: 2
     

@@ -2,7 +2,7 @@ import logging
 import socket
 import threading
 
-from .utils import load_config, send, output_dict_to_file
+from .utils import load_config, send
 from .kvstore import KeyValueStore, EventualConsistencyKVStore
 
 config, config_settings = load_config()
@@ -16,7 +16,9 @@ class Replica:
         self.consistency_scheme = consistency_scheme
         self.replica_addresses = replica_addresses
         self.output_location = config_settings["replica"]["output_location"]
+        self.output_suffix = config_settings["replica"]["output_suffix"]
 
+        # Initialize the chosen consistency scheme
         if consistency_scheme == "eventual":
             self.kv_store = EventualConsistencyKVStore(self, replica_addresses, config_settings["replica"]["gossip_interval"])
         else:
@@ -29,6 +31,7 @@ class Replica:
         logging.debug(
             f"{self.id} initialized at {self.host}:{self.port}")
 
+    # Handle commands from clients
     def handle_command(self, command):
         cmd = command.split()
         cmd_action = cmd[0]
@@ -45,12 +48,7 @@ class Replica:
         elif cmd_action == "delete":
             return self.kv_store.delete(cmd[1])
         elif cmd_action == "save":
-            
-            # return self.kv_store.save(f"{output_location}/{cmd[1]}")
-            return self.kv_store.save(f"{self.output_location}/{self.id}_kvstore.txt")
-            
-            # output_dict_to_file(self.kv_store.store, f"{output_location}/{cmd[1]}")
-            # return "Write successful"
+            return self.kv_store.save(f"{self.output_location}/{self.id}_{self.output_suffix}")
         elif cmd_action == "update":
             return self.kv_store.update(cmd[1:])
         else:
