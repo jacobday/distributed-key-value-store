@@ -72,6 +72,7 @@ class EventualConsistencyKVStore(KeyValueStore):
                 # Clear pending updates
                 self.pending_updates[target_replica] = []
 
+
 class LinearConsistencyKVStore(KeyValueStore):
     def __init__(self, replica, replica_addresses):
         super().__init__()
@@ -108,3 +109,32 @@ class LinearConsistencyKVStore(KeyValueStore):
         send(target_replica, data, callback=callback)
 
         return acknowledge_event
+
+
+class SequentialConsistencyKVStore(KeyValueStore):
+    def __init__(self, replica, replica_addresses, sequencer_address):
+        super().__init__()
+        self.replica = replica
+        self.replica_addresses = replica_addresses
+        self.sequencer_address = sequencer_address
+
+    def set(self, key, value):
+        if (self.replica.host, self.replica.port) == self.sequencer_address:
+            # If this replica is the sequencer, set and broadcast the new key-value pair
+            super().set(key, value)
+            self.broadcast_update(key, value)
+
+            return "Key-value pair added"
+        else:
+            # If this replica is not the sequencer, send the new key-value pair to the sequencer
+            data = f"set {key} {value}"
+            send(self.sequencer_address, data)
+
+            return "Key-value pair forwarded to sequencer"
+
+    def broadcast_update(self, key, value):
+        # Send new key-value pair to each replica
+        for address in self.replica_addresses:
+            if address != (self.replica.host, self.replica.port):
+                data = f"update {key} {value}"
+                send(address, data)

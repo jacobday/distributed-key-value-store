@@ -3,18 +3,20 @@ import socket
 import threading
 
 from .utils import load_config, send
-from .kvstore import KeyValueStore, EventualConsistencyKVStore, LinearConsistencyKVStore
+from .kvstore import KeyValueStore, EventualConsistencyKVStore, LinearConsistencyKVStore, SequentialConsistencyKVStore
 
 config, config_settings = load_config()
 
 
 class Replica:
-    def __init__(self, id, host, port, consistency_scheme, replica_addresses):
+    def __init__(self, id, host, port, consistency_scheme, replica_addresses, sequencer_address):
         self.id = id
         self.host = host
         self.port = port
         self.consistency_scheme = consistency_scheme
         self.replica_addresses = replica_addresses
+        self.sequencer_address = sequencer_address
+
         self.output_location = config_settings["replica"]["output_location"]
         self.output_suffix = config_settings["replica"]["output_suffix"]
 
@@ -23,6 +25,8 @@ class Replica:
             self.kv_store = EventualConsistencyKVStore(self, replica_addresses)
         elif consistency_scheme == "linear":
             self.kv_store = LinearConsistencyKVStore(self, replica_addresses)
+        elif consistency_scheme == "sequential":
+            self.kv_store = SequentialConsistencyKVStore(self, replica_addresses, sequencer_address)
         else:
             self.kv_store = KeyValueStore()
 

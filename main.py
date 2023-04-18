@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import random
 import socket
 
 from distributed_kv_store import Client, Replica, load_config, send
@@ -31,9 +32,8 @@ class Main:
         self.sock.bind((self.host, self.port))
 
         self.client_addresses = []
-        # TODO make this dynamic
-        self.replica_addresses = [
-            ('localhost', 9400), ('localhost', 9401), ('localhost', 9402)]
+        self.replica_addresses = [(config_settings["replica"]["ip"], config_settings["replica"]["port"] + i) for i in range(self.num_replicas)]
+        self.sequencer_address = random.choice(self.replica_addresses)
 
     def run(self):
         self.start_replicas()
@@ -88,7 +88,7 @@ class Main:
 
             # Start replica process
             replica = Replica(replica_id, replica_ip,
-                              replica_port, self.consistency_scheme, self.replica_addresses)
+                              replica_port, self.consistency_scheme, self.replica_addresses, self.sequencer_address)
             replica_process = multiprocessing.Process(target=replica.start)
             replica_process.start()
 
