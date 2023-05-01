@@ -1,5 +1,7 @@
 import logging
+import random
 import threading
+import time
 
 from .utils import output_dict_to_file, send, simulate_latency
 
@@ -16,8 +18,16 @@ class KeyValueStore:
             return "Key does not exist"
 
     def set(self, key, value, replica_id=None, vector_clock=None):
-        self.store[key] = value
-        self.vector_clock[replica_id] = vector_clock
+        # If a replica ID or vector clock are not provided, update the key-value pair
+        if replica_id is None or vector_clock is None:
+            self.store[key] = value
+        # If they are provided, only update the key-value pair if the vector clock is greater than the current vector clock
+        elif replica_id not in self.vector_clock or self.vector_clock[replica_id] < vector_clock:
+            self.store[key] = value
+
+            # Update the vector clock
+            self.vector_clock[replica_id] = vector_clock
+
         return "Key-value pair added"
 
     def delete(self, key):
@@ -28,18 +38,12 @@ class KeyValueStore:
             return "Key does not exist"
 
     def update(self, updates):
-        # for i in range(0, len(updates), 2):
-        #     key = updates[i]
-        #     value = updates[i + 1]
-        #     self.store[key] = value
-
         for i in range(0, len(updates), 4):
             key = updates[i]
             value = updates[i + 1]
             replica_id = updates[i + 2] if i + 2 < len(updates) else None
-            vector_clock = int(updates[i + 3]) if i + 3 < len(updates) else None
-
-            print(f"Updating key {key} with value {value} from replica {replica_id} with vector clock {vector_clock}")
+            vector_clock = int(updates[i + 3]) if i + \
+                3 < len(updates) else None
 
             # If a replica ID or vector clock are not provided, update the key-value pair
             if replica_id is None or vector_clock is None:
@@ -59,29 +63,37 @@ class KeyValueStore:
 
 
 class EventualConsistencyKVStore(KeyValueStore):
-    def __init__(self, replica, replica_addresses, gossip_interval=2):
+    def __init__(self, replica):
         super().__init__()
         self.replica = replica
-        self.replica_addresses = replica_addresses
-        self.gossip_interval = gossip_interval
-
         self.pending_updates = {address: []
-                                for address in self.replica_addresses}
+                                for address in self.replica.replica_addresses}
+
+        threading.Thread(target=self.gossip_thread).start()
 
     def set(self, key, value):
         super().set(key, value)
 
         # Queue new key-value pair to be sent to each replica
-        for address in self.replica_addresses:
+        for address in self.replica.replica_addresses:
             if address != (self.replica.host, self.replica.port):
                 self.pending_updates.setdefault(
                     address, []).append((key, value))
+                
+        print("Pending updates: ", self.pending_updates)
 
-        self.send_updates()
         return "Key-value pair added"
+
+    # Gossip pending updates to each replica every gossip_interval seconds
+    def gossip_thread(self):
+        while True:
+            time.sleep(self.replica.gossip_interval)
+            self.send_updates()
 
     # Send updates to each replica
     def send_updates(self):
+        print(f"Sending updates: {self.pending_updates}")
+
         for target_replica, updates in self.pending_updates.items():
             # If there are pending updates for the target_replica, send them
             if updates:
@@ -94,10 +106,9 @@ class EventualConsistencyKVStore(KeyValueStore):
 
 
 class LinearConsistencyKVStore(KeyValueStore):
-    def __init__(self, replica, replica_addresses):
+    def __init__(self, replica):
         super().__init__()
         self.replica = replica
-        self.replica_addresses = replica_addresses
 
     def set(self, key, value):
         super().set(key, value)
@@ -106,7 +117,7 @@ class LinearConsistencyKVStore(KeyValueStore):
         acknowledgements = []
 
         # Send new key-value pair to each replica
-        for address in self.replica_addresses:
+        for address in self.replica.replica_addresses:
             if address != (self.replica.host, self.replica.port):
                 data = f"update {key} {value}"
                 acknowledgements.append(self.send_updates(address, data))
@@ -132,14 +143,12 @@ class LinearConsistencyKVStore(KeyValueStore):
 
 
 class SequentialConsistencyKVStore(KeyValueStore):
-    def __init__(self, replica, replica_addresses, sequencer_address):
+    def __init__(self, replica):
         super().__init__()
         self.replica = replica
-        self.replica_addresses = replica_addresses
-        self.sequencer_address = sequencer_address
 
     def set(self, key, value):
-        if (self.replica.host, self.replica.port) == self.sequencer_address:
+        if (self.replica.host, self.replica.port) == self.replica.sequencer_address:
             # If this replica is the sequencer, set and broadcast the new key-value pair
             super().set(key, value)
             self.broadcast_update(key, value)
@@ -148,56 +157,55 @@ class SequentialConsistencyKVStore(KeyValueStore):
         else:
             # If this replica is not the sequencer, send the new key-value pair to the sequencer
             data = f"set {key} {value}"
-            send(self.sequencer_address, data)
+            send(self.replica.sequencer_address, data)
 
             return "Key-value pair forwarded to sequencer"
 
     def broadcast_update(self, key, value):
         # Send new key-value pair to each replica
-        for address in self.replica_addresses:
+        for address in self.replica.replica_addresses:
             if address != (self.replica.host, self.replica.port):
                 data = f"update {key} {value}"
                 send(address, data)
 
 
-class CasualConsistencyKVStore(KeyValueStore):
-    def __init__(self, replica, replica_addresses, gossip_interval=2):
+class CausalConsistencyKVStore(KeyValueStore):
+    def __init__(self, replica):
         super().__init__()
         self.replica = replica
-        self.replica_addresses = replica_addresses
-        self.gossip_interval = gossip_interval
-
         self.pending_updates = {address: []
-                                for address in self.replica_addresses}
+                                for address in self.replica.replica_addresses}
 
     def set(self, key, value, replica_id=None, vector_clock=None):
         # If the replica_id and vector_clock are not provided, generate them
         if replica_id is None and vector_clock is None:
             replica_id = self.replica.id
-            self.vector_clock[replica_id] = self.vector_clock.get(replica_id, 0) + 1
+            self.vector_clock[replica_id] = self.vector_clock.get(
+                replica_id, 0) + 1
             vector_clock = self.vector_clock[replica_id]
 
         super().set(key, value, replica_id, vector_clock)
 
         # Queue new key-value pair to be sent to each replica
-        for address in self.replica_addresses:
+        for address in self.replica.replica_addresses:
             if address != (self.replica.host, self.replica.port):
-                self.pending_updates.setdefault(address, []).append((key, value, replica_id, vector_clock))
+                self.pending_updates.setdefault(address, []).append(
+                    (key, value, replica_id, vector_clock))
 
         self.send_updates()
         return "Key-value pair added"
-
 
     def send_updates(self):
         for target_replica, updates in self.pending_updates.items():
             # If there are pending updates for the target_replica, send them
             if updates:
                 formatted_updates = []
-                
+
                 # Format the updates to include the replica_id and vector_clock
                 for update in updates:
                     key, value, replica_id, vector_clock = update
-                    formatted_updates.append(f"{key} {value} {replica_id} {vector_clock}")
+                    formatted_updates.append(
+                        f"{key} {value} {replica_id} {vector_clock}")
 
                 data = "update " + " ".join(formatted_updates)
                 send(target_replica, data)

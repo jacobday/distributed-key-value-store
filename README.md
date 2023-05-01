@@ -12,7 +12,7 @@
     1. Sequential
     1. Eventual
     1. Linear
-    1. Casual
+    1. Causal
 
 ## Notes
 

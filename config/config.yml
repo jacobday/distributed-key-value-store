@@ -2,7 +2,7 @@ settings:
   num_clients: 2
   num_replicas: 3
   log_level: DEBUG
-  consistency_schemes: [sequential, eventual, linear, casual]
+  consistency_schemes: [sequential, eventual, linear, causal]
   main:
     ip: localhost
     port: 9000
@@ -15,5 +15,5 @@ settings:
     port: 9400
     output_location: results
     output_suffix: kvstore.txt
-    gossip_interval: 2
+    gossip_interval: 5
     

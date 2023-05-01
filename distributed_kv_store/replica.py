@@ -3,7 +3,7 @@ import socket
 import threading
 
 from .utils import load_config, send
-from .kvstore import CasualConsistencyKVStore, KeyValueStore, EventualConsistencyKVStore, LinearConsistencyKVStore, SequentialConsistencyKVStore
+from .kvstore import CausalConsistencyKVStore, KeyValueStore, EventualConsistencyKVStore, LinearConsistencyKVStore, SequentialConsistencyKVStore
 
 config, config_settings = load_config()
 
@@ -17,18 +17,20 @@ class Replica:
         self.replica_addresses = replica_addresses
         self.sequencer_address = sequencer_address
 
+        self.gossip_interval = config_settings["replica"]["gossip_interval"]
         self.output_location = config_settings["replica"]["output_location"]
         self.output_suffix = config_settings["replica"]["output_suffix"]
+        self.save_location = f"{self.output_location}/{self.id}_{self.output_suffix}"
 
         # Initialize the chosen consistency scheme
         if consistency_scheme == "eventual":
-            self.kv_store = EventualConsistencyKVStore(self, replica_addresses)
+            self.kv_store = EventualConsistencyKVStore(self)
         elif consistency_scheme == "linear":
-            self.kv_store = LinearConsistencyKVStore(self, replica_addresses)
+            self.kv_store = LinearConsistencyKVStore(self)
         elif consistency_scheme == "sequential":
-            self.kv_store = SequentialConsistencyKVStore(self, replica_addresses, sequencer_address)
-        elif consistency_scheme == "casual":
-            self.kv_store = CasualConsistencyKVStore(self, replica_addresses)
+            self.kv_store = SequentialConsistencyKVStore(self)
+        elif consistency_scheme == "causal":
+            self.kv_store = CausalConsistencyKVStore(self)
         else:
             self.kv_store = KeyValueStore()
 
@@ -44,21 +46,24 @@ class Replica:
         cmd = command.split()
         cmd_action = cmd[0]
 
-        # print(f"{self.id} received command: {command}")
-
         if cmd_action == "get":
             return self.kv_store.get(cmd[1])
         elif cmd_action == "set":
             response = self.kv_store.set(cmd[1], cmd[2])
-            self.kv_store.save(f"{self.output_location}/{self.id}_{self.output_suffix}")
+            self.kv_store.save(self.save_location)
 
             return response
         elif cmd_action == "delete":
-            return self.kv_store.delete(cmd[1])
+            response = self.kv_store.delete(cmd[1])
+            self.kv_store.save(self.save_location)
+
+            return response
         elif cmd_action == "save":
-            return self.kv_store.save(f"{self.output_location}/{self.id}_{self.output_suffix}")
+            return self.kv_store.save(self.save_location)
         elif cmd_action == "update":
-            return self.kv_store.update(cmd[1:])
+            response = self.kv_store.update(cmd[1:])
+            self.kv_store.save(self.save_location)
+            return response
         else:
             return "Invalid command"
 

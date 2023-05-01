@@ -111,7 +111,7 @@ class Main:
             start_message = f"Starting distributed kv store with {self.consistency_scheme} consistency..."
             self.logger.info(start_message)
             print(
-                f"\n{start_message}\n  View logs in main.log\n")
+                f"\n{start_message}\n  - View logs in ./logs/main.log\n  - View the final kvstore of each replica in ./results/replica_#_kvstore.txt\n")
 
             self.run()
 
