@@ -3,7 +3,7 @@ import socket
 import threading
 
 from .utils import load_config, send
-from .kvstore import KeyValueStore, EventualConsistencyKVStore, LinearConsistencyKVStore, SequentialConsistencyKVStore
+from .kvstore import CasualConsistencyKVStore, KeyValueStore, EventualConsistencyKVStore, LinearConsistencyKVStore, SequentialConsistencyKVStore
 
 config, config_settings = load_config()
 
@@ -27,6 +27,8 @@ class Replica:
             self.kv_store = LinearConsistencyKVStore(self, replica_addresses)
         elif consistency_scheme == "sequential":
             self.kv_store = SequentialConsistencyKVStore(self, replica_addresses, sequencer_address)
+        elif consistency_scheme == "casual":
+            self.kv_store = CasualConsistencyKVStore(self, replica_addresses)
         else:
             self.kv_store = KeyValueStore()
 
@@ -42,7 +44,7 @@ class Replica:
         cmd = command.split()
         cmd_action = cmd[0]
 
-        print(f"{self.id} received command: {command}")
+        # print(f"{self.id} received command: {command}")
 
         if cmd_action == "get":
             return self.kv_store.get(cmd[1])
@@ -67,7 +69,7 @@ class Replica:
             if data:
                 logging.debug(f"{self.id} received \"{data}\" from {addr}")
                 response = self.handle_command(data)
-                print(response)
+                # print(response)
                 conn.sendall(response.encode())
 
     def listen(self):
