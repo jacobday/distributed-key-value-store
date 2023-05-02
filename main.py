@@ -91,9 +91,6 @@ class Main:
             # Start replica process
             replica = Replica(replica_id, replica_ip,
                               replica_port, self.consistency_scheme, self.replica_addresses, self.sequencer_address)
-            # replica_process = multiprocessing.Process(target=replica.start)
-            # replica_process.start()
-
             replica_thread = threading.Thread(target=replica.start)
             replica_thread.start()
 
