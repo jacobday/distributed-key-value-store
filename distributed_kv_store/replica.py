@@ -53,16 +53,17 @@ class Replica:
             self.kv_store.save(self.save_location)
 
             return response
-        elif cmd_action == "delete":
-            response = self.kv_store.delete(cmd[1])
-            self.kv_store.save(self.save_location)
+        # elif cmd_action == "delete":
+        #     response = self.kv_store.delete(cmd[1])
+        #     self.kv_store.save(self.save_location)
 
-            return response
+        #     return response
         elif cmd_action == "save":
             return self.kv_store.save(self.save_location)
         elif cmd_action == "update":
             response = self.kv_store.update(cmd[1:])
             self.kv_store.save(self.save_location)
+            
             return response
         else:
             return "Invalid command"
