@@ -15,5 +15,5 @@ settings:
     port: 9400
     output_location: results
     output_suffix: kvstore.txt
-    gossip_interval: 5
+    gossip_interval: 3
     

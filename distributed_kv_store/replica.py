@@ -63,7 +63,7 @@ class Replica:
         elif cmd_action == "update":
             response = self.kv_store.update(cmd[1:])
             self.kv_store.save(self.save_location)
-            
+
             return response
         else:
             return "Invalid command"

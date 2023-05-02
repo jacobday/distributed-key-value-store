@@ -65,5 +65,5 @@ def get_replica_address(replica_id, replica_settings):
 
 # Simulate network latency by sleeping for a random amount of time
 def simulate_latency():
-    sleep_time = random.uniform(0, 1)
+    sleep_time = random.uniform(0, 3)
     time.sleep(sleep_time)

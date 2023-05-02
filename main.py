@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 import random
 import socket
+import threading
 
 from distributed_kv_store import Client, Replica, load_config, send
 
@@ -32,7 +33,8 @@ class Main:
         self.sock.bind((self.host, self.port))
 
         self.client_addresses = []
-        self.replica_addresses = [(config_settings["replica"]["ip"], config_settings["replica"]["port"] + i) for i in range(self.num_replicas)]
+        self.replica_addresses = [(config_settings["replica"]["ip"],
+                                   config_settings["replica"]["port"] + i) for i in range(self.num_replicas)]
         self.sequencer_address = random.choice(self.replica_addresses)
 
     def run(self):
@@ -89,8 +91,11 @@ class Main:
             # Start replica process
             replica = Replica(replica_id, replica_ip,
                               replica_port, self.consistency_scheme, self.replica_addresses, self.sequencer_address)
-            replica_process = multiprocessing.Process(target=replica.start)
-            replica_process.start()
+            # replica_process = multiprocessing.Process(target=replica.start)
+            # replica_process.start()
+
+            replica_thread = threading.Thread(target=replica.start)
+            replica_thread.start()
 
     # Ask the user to choose a consistency scheme
     def set_run_options(self):

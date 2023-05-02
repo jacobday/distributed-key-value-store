@@ -9,7 +9,7 @@
 
 1. Define the commands to be executed in the [client-commands.txt](./commands/client-commands.txt) file, following this template:
 
-    `client_id replica_id set/get key value`
+    `client_id replica_id set/get key [value]`
 
 1. Run the [main.py](./main.py) script
 1. Select the desired consistency scheme in the console:

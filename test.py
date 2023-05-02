@@ -39,7 +39,7 @@ def test_eventual_consistency():
     replica0.kv_store.set("a", "1")
     logging.debug("[replica0] Set a = 1")
 
-    # The gossip interval is 5 seconds, therefore, replica1 and replica2 should not have the value yet
+    # The gossip interval is 3 seconds, therefore, replica1 and replica2 should not have the value yet
     time.sleep(1)
 
     replica0_value = replica0.kv_store.get("a")
@@ -53,8 +53,8 @@ def test_eventual_consistency():
     assert replica1_value == "Key does not exist", "replica1: eventual consistency failed"
     assert replica2_value == "Key does not exist", "replica2: eventual consistency failed"
 
-    # After 5 seconds, all the replicas should have the value
-    time.sleep(5)
+    # After 3 seconds, all the replicas should have the value
+    time.sleep(config_settings["replica"]["gossip_interval"])
 
     replica0_value = replica0.kv_store.get("a")
     replica1_value = replica1.kv_store.get("a")
