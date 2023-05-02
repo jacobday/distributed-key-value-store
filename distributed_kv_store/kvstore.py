@@ -18,11 +18,14 @@ class KeyValueStore:
             return "Key does not exist"
 
     def set(self, key, value, replica_id=None, vector_clock=None):
+        # TODO remove
+        print(f"{self.replica.id} Set: {key} = {value}, vector clock: {vector_clock}, store vector clock: {self.vector_clock}")
+
         # If a replica ID or vector clock are not provided, update the key-value pair
         if replica_id is None or vector_clock is None:
             self.store[key] = value
         # If they are provided, only update the key-value pair if the vector clock is greater than the current vector clock
-        elif replica_id not in self.vector_clock or self.vector_clock[replica_id] < vector_clock:
+        elif replica_id not in self.vector_clock or self.vector_clock[replica_id] <= vector_clock:
             self.store[key] = value
 
             # Update the vector clock
@@ -38,6 +41,8 @@ class KeyValueStore:
             return "Key does not exist"
 
     def update(self, updates):
+        # print(f"{self.replica.id} Update: {updates}")
+
         for i in range(0, len(updates), 4):
             key = updates[i]
             value = updates[i + 1]
@@ -79,8 +84,8 @@ class EventualConsistencyKVStore(KeyValueStore):
             if address != (self.replica.host, self.replica.port):
                 self.pending_updates.setdefault(
                     address, []).append((key, value))
-                
-        print("Pending updates: ", self.pending_updates)
+
+        # print("Pending updates: ", self.pending_updates)
 
         return "Key-value pair added"
 
@@ -92,7 +97,7 @@ class EventualConsistencyKVStore(KeyValueStore):
 
     # Send updates to each replica
     def send_updates(self):
-        print(f"Sending updates: {self.pending_updates}")
+        # print(f"Sending updates: {self.pending_updates}")
 
         for target_replica, updates in self.pending_updates.items():
             # If there are pending updates for the target_replica, send them
