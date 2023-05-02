@@ -3,11 +3,11 @@
 ## How to Run
 
 1. Install the necessary dependencies by executing `pip3 install -r requirements.txt`
-1. Configure the number of client and replica processes in the [config.yml](./config.yml) file
+1. Configure the number of client and replica processes in the [config.yml](./config/config.yml) file
 
 ### Main Program
 
-1. Define the commands to be executed in the [client-commands.txt](./commands/client-commands.txt)file, following this template:
+1. Define the commands to be executed in the [client-commands.txt](./commands/client-commands.txt) file, following this template:
 
     `client_id replica_id set/get key value`
 
